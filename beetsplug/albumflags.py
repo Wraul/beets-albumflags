@@ -22,6 +22,21 @@ class Flag:
         return ""
 
 
+class FieldMappingFlag(Flag):
+    _field = ""
+    _mapping = {}
+
+    def __init__(self):
+        super(FieldMappingFlag, self).__init__()
+        self._patterns = map(lambda m: r" \(%s\)" % m, self._mapping.values())
+
+    def generate(self, item):
+        if self._field in item and item[self._field] in self._mapping:
+            return " (%s)" % self._mapping[item[self._field]]
+        else:
+            return ""
+
+
 class BitdepthFlag(Flag):
     _patterns = [
         r" \(\d+bit\)",
@@ -58,60 +73,33 @@ class ChannelsFlag(Flag):
             return ""
 
 
-class MediaFlag(Flag):
-    _media_mapping = {
+class MediaFlag(FieldMappingFlag):
+    _field = "media"
+    _mapping = {
         "Download": "Download",
         "Vinyl": "Vinyl",
         "BluRay": "BluRay",
         "CD-R": "CD-R",
     }
 
-    def __init__(self):
-        super(MediaFlag, self).__init__()
-        self._patterns = map(lambda m: r" \(%s\)" % m, self._media_mapping.values())
 
-    def generate(self, item):
-        if item.media in self._media_mapping:
-            return " (%s)" % self._media_mapping[item.media]
-        else:
-            return ""
-
-
-class StatusFlag(Flag):
-    _status_mapping = {
+class StatusFlag(FieldMappingFlag):
+    _field = "albumstatus"
+    _mapping = {
         "Bootleg": "Bootleg",
         "Promotion": "Promo",
     }
 
-    def __init__(self):
-        super(StatusFlag, self).__init__()
-        self._patterns = map(lambda m: r" \(%s\)" % m, self._status_mapping.values())
 
-    def generate(self, item):
-        if item.albumstatus in self._status_mapping:
-            return " (%s)" % self._status_mapping[item.albumstatus]
-        else:
-            return ""
-
-
-class AlbumTypeFlag(Flag):
-    _type_mapping = {
+class AlbumTypeFlag(FieldMappingFlag):
+    _field = "albumtype"
+    _mapping = {
         "demo": "Demo",
         "ep": "EP",
         "live": "Libe",
         "single": "Single",
         "soundtrack": "Soundtrack",
     }
-
-    def __init__(self):
-        super(AlbumTypeFlag, self).__init__()
-        self._patterns = map(lambda m: r" \(%s\)" % m, self._type_mapping.values())
-
-    def generate(self, item):
-        if item.albumtype in self._type_mapping:
-            return " (%s)" % self._type_mapping[item.albumtype]
-        else:
-            return ""
 
 
 CONFIG_FLAG_MAP = {
