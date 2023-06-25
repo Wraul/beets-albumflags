@@ -25,9 +25,9 @@ class FieldMappingFlag(Flag):
     _field = ""
     _mapping = {}
 
-    def __init__(self):
-        super(FieldMappingFlag, self).__init__()
-        self._patterns = map(lambda m: r" \(%s\)" % m, self._mapping.values())
+    def remove(self, album):
+        patterns = map(lambda m: r" \(%s\)" % m, self._mapping.values())
+        return re.sub("|".join(patterns), "", album)
 
     def generate(self, item):
         if self._field in item and item[self._field] in self._mapping:
