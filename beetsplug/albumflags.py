@@ -94,7 +94,28 @@ class StatusFlag(Flag):
             return ""
 
 
+class AlbumTypeFlag(Flag):
+    _type_mapping = {
+        "demo": "Demo",
+        "ep": "EP",
+        "live": "Libe",
+        "single": "Single",
+        "soundtrack": "Soundtrack",
+    }
+
+    def __init__(self):
+        super(AlbumTypeFlag, self).__init__()
+        self._patterns = map(lambda m: r" \(%s\)" % m, self._type_mapping.values())
+
+    def generate(self, item):
+        if item.albumtype in self._type_mapping:
+            return " (%s)" % self._type_mapping[item.albumtype]
+        else:
+            return ""
+
+
 CONFIG_FLAG_MAP = {
+    "albumtype": AlbumTypeFlag,
     "status": StatusFlag,
     "media": MediaFlag,
     "channels": ChannelsFlag,
