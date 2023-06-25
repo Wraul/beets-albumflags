@@ -1,7 +1,6 @@
 from beets.plugins import BeetsPlugin
 from beets import ui
 from beets.ui.commands import _do_query
-from beets.importer import action
 
 from functools import reduce
 import re
@@ -183,8 +182,3 @@ class AlbumFlags(BeetsPlugin):
 
     def _import_item(self, lib, item):
         self._update_flags(item)
-
-    def _update_flags_task(self, session, task):
-        for item in task.items:
-            self._update_flags(item)
-        return action.RETAG
