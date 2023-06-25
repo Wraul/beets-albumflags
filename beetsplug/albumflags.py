@@ -127,13 +127,13 @@ class AlbumFlags(BeetsPlugin):
             self.register_listener("album_imported", self._import_album)
             self.register_listener("item_imported", self._import_item)
 
-    def _remove_flags(self, album):
+    def _remove_flag_string(self, album):
         """Remove all known flags from the provided album string"""
         return reduce(
             lambda new_album, flag: flag.remove(new_album), self._flags, album
         )
 
-    def _generate_flags(self, item):
+    def _generate_flag_string(self, item):
         """Generate a string with flags based on the items properties"""
         return "".join(flag.generate(item) for flag in self._flags)
 
@@ -141,13 +141,18 @@ class AlbumFlags(BeetsPlugin):
         update_flags_command = ui.Subcommand("updateflags", help="update album flags")
         update_flags_command.parser.add_album_option()
         update_flags_command.func = self._update_flags_command
-        return [update_flags_command]
+
+        remove_flags_command = ui.Subcommand("removeflags", help="remove album flags")
+        remove_flags_command.parser.add_album_option()
+        remove_flags_command.func = self._remove_flags_command
+
+        return [update_flags_command, remove_flags_command]
 
     def _update_flags(self, item):
         self._log.debug("Updating flags for item: {0.id}: {0.title}", item)
 
-        album = self._remove_flags(item.album)
-        flags = self._generate_flags(item)
+        album = self._remove_flag_string(item.album)
+        flags = self._generate_flag_string(item)
         album_with_flags = album + flags
 
         self._log.debug("Generated the following flags: {0}", flags)
@@ -165,6 +170,24 @@ class AlbumFlags(BeetsPlugin):
             current_album.album = album_with_flags
             current_album.try_sync(ui.should_write(), ui.should_move())
 
+    def _remove_flags(self, item):
+        self._log.debug("Removing flags for item: {0.id}: {0.title}", item)
+
+        album_without_flags = self._remove_flag_string(item.album)
+
+        if item.album != album_without_flags:
+            self._log.debug(
+                'Changing album from "{0}" to "{1}"', item.album, album_without_flags
+            )
+            item.album = album_without_flags
+            item.try_sync(ui.should_write(), ui.should_move())
+
+        # Also write the changes to the parent album
+        current_album = item.get_album()
+        if current_album and current_album.album != album_without_flags:
+            current_album.album = album_without_flags
+            current_album.try_sync(ui.should_write(), ui.should_move())
+
     def _update_flags_command(self, lib, opts, args):
         query = ui.decargs(args)
         items, albums = _do_query(lib, query, opts.album, False)
@@ -174,6 +197,16 @@ class AlbumFlags(BeetsPlugin):
             item.load()
 
             self._update_flags(item)
+
+    def _remove_flags_command(self, lib, opts, args):
+        query = ui.decargs(args)
+        items, albums = _do_query(lib, query, opts.album, False)
+
+        for item in items:
+            # Reload the item as it could have changed due to us making changes to the parent album
+            item.load()
+
+            self._remove_flags(item)
 
     def _import_album(self, lib, album):
         # Use the first item to determine a albums flags
