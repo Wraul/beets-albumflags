@@ -79,7 +79,16 @@ class ChannelsFlag(Flag):
             return ""
 
 
+class RemasterFlag(Flag):
+    _patterns = [
+        r" \(Remastered\)",
+    ]
 
+    def generate(self, item):
+        if re.match(r".*remaster(ed)?.*", item.albumdisambig):
+            return " (Remastered)"
+        else:
+            return ""
 
 
 class AlbumFlags(BeetsPlugin):
@@ -117,6 +126,8 @@ class AlbumFlags(BeetsPlugin):
                 )
             elif category == "channels":
                 self._flags.append(ChannelsFlag())
+            elif category == "remaster":
+                self._flags.append(RemasterFlag())
 
         if self.config["auto"].get():
             self.register_listener("album_imported", self._import_album)
