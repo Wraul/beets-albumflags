@@ -22,8 +22,9 @@ class Flag:
 
 
 class FieldMappingFlag(Flag):
-    _field = ""
-    _mapping = {}
+    def __init__(self, field, mapping):
+        self._field = field
+        self._mapping = mapping
 
     def remove(self, album):
         patterns = map(lambda m: r" \(%s\)" % m, self._mapping.values())
@@ -41,8 +42,11 @@ class BitdepthFlag(Flag):
         r" \(\d+bit\)",
     ]
 
+    def __init__(self, min_bitdepth):
+        self._min_bitdepth = min_bitdepth
+
     def generate(self, item):
-        if item.bitdepth >= 24:
+        if item.bitdepth >= self._min_bitdepth:
             return " (%ibit)" % (item.bitdepth)
         else:
             return ""
@@ -53,8 +57,11 @@ class SamplerateFlag(Flag):
         r" \(\d+kHz\)",
     ]
 
+    def __init__(self, min_samplerate):
+        self._min_samplerate = min_samplerate
+
     def generate(self, item):
-        if item.samplerate > 44100:
+        if item.samplerate >= self._min_samplerate:
             return " (%gkHz)" % (item.samplerate / 1000)
         else:
             return ""
@@ -72,43 +79,7 @@ class ChannelsFlag(Flag):
             return ""
 
 
-class MediaFlag(FieldMappingFlag):
-    _field = "media"
-    _mapping = {
-        "Download": "Download",
-        "Vinyl": "Vinyl",
-        "BluRay": "BluRay",
-        "CD-R": "CD-R",
-    }
 
-
-class StatusFlag(FieldMappingFlag):
-    _field = "albumstatus"
-    _mapping = {
-        "Bootleg": "Bootleg",
-        "Promotion": "Promo",
-    }
-
-
-class AlbumTypeFlag(FieldMappingFlag):
-    _field = "albumtype"
-    _mapping = {
-        "demo": "Demo",
-        "ep": "EP",
-        "live": "Libe",
-        "single": "Single",
-        "soundtrack": "Soundtrack",
-    }
-
-
-CONFIG_FLAG_MAP = {
-    "albumtype": AlbumTypeFlag,
-    "status": StatusFlag,
-    "media": MediaFlag,
-    "channels": ChannelsFlag,
-    "bitdepth": BitdepthFlag,
-    "samplerate": SamplerateFlag,
-}
 
 
 class AlbumFlags(BeetsPlugin):
@@ -117,13 +88,37 @@ class AlbumFlags(BeetsPlugin):
 
         self._flags = []
 
-        self.config.add({"auto": True} | {k: True for k in CONFIG_FLAG_MAP})
+        self.config.add(
+            {
+                "auto": True,
+                "flags": [],
+                "field_flags": {},
+                "bitdepth_flag": {"min_bitdepth": 24},
+                "samplerate_flag": {"min_samplerate": 96000},
+            }
+        )
 
-        for k, f in CONFIG_FLAG_MAP.items():
-            if self.config[k].get():
-                self._flags.append(f())
+        field_flags = self.config["field_flags"].get()
 
-        if self.config["auto"]:
+        for f in self.config["flags"].get():
+            category, field = f.split(":") if ":" in f else [f, None]
+
+            if category == "field" and field in field_flags:
+                self._flags.append(FieldMappingFlag(field, field_flags[field]))
+            elif category == "bitdepth":
+                self._flags.append(
+                    BitdepthFlag(self.config["bitdepth_flag"]["min_bitdepth"].get())
+                )
+            elif category == "samplerate":
+                self._flags.append(
+                    SamplerateFlag(
+                        self.config["samplerate_flag"]["min_samplerate"].get()
+                    )
+                )
+            elif category == "channels":
+                self._flags.append(ChannelsFlag())
+
+        if self.config["auto"].get():
             self.register_listener("album_imported", self._import_album)
             self.register_listener("item_imported", self._import_item)
 
