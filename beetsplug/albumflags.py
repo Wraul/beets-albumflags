@@ -22,19 +22,45 @@ class Flag:
 
 
 class FieldMappingFlag(Flag):
+    def _is_regex(self, string):
+        return re.match("^/.*/$", string)
+
     def __init__(self, field, mapping):
         self._field = field
         self._mapping = mapping
+
+        self._string_mapping = dict(
+            filter(lambda it: not self._is_regex(it[0]), self._mapping.items())
+        )
+        self._regex_mapping = dict(
+            map(
+                lambda it: (it[0][1:-1], it[1]),
+                filter(lambda it: self._is_regex(it[0]), self._mapping.items()),
+            )
+        )
 
     def remove(self, album):
         patterns = map(lambda m: r" \(%s\)" % m, self._mapping.values())
         return re.sub("|".join(patterns), "", album)
 
+    def _match(self, value):
+        if value in self._string_mapping:
+            return self._string_mapping[value]
+        else:
+            return next(
+                (v for k, v in self._regex_mapping.items() if re.match(k, value)),
+                None,
+            )
+
+    def _format_flag(self, value):
+        flag = self._match(value)
+        return " (%s)" % flag if flag else ""
+
     def generate(self, item):
         if self._field in item:
             values = item[self._field].split("; ")
             flags = map(
-                lambda t: " (%s)" % self._mapping[t] if t in self._mapping else "",
+                self._format_flag,
                 values,
             )
             return "".join(flags)
