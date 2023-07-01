@@ -31,8 +31,13 @@ class FieldMappingFlag(Flag):
         return re.sub("|".join(patterns), "", album)
 
     def generate(self, item):
-        if self._field in item and item[self._field] in self._mapping:
-            return " (%s)" % self._mapping[item[self._field]]
+        if self._field in item:
+            values = item[self._field].split("; ")
+            flags = map(
+                lambda t: " (%s)" % self._mapping[t] if t in self._mapping else "",
+                values,
+            )
+            return "".join(flags)
         else:
             return ""
 
