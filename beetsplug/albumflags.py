@@ -1,6 +1,7 @@
 from beets.plugins import BeetsPlugin
 from beets import ui
 from beets.ui.commands import _do_query
+from beets.util import displayable_path
 
 from functools import reduce
 import re
@@ -147,8 +148,7 @@ class AlbumFlags(BeetsPlugin):
                 self._flags.append(ChannelsFlag())
 
         if self.config["auto"].get():
-            self.register_listener("album_imported", self._import_album)
-            self.register_listener("item_imported", self._import_item)
+            self.import_stages = [self._import_stage]
 
     def _remove_flag_string(self, album):
         """Remove all known flags from the provided album string"""
@@ -171,7 +171,10 @@ class AlbumFlags(BeetsPlugin):
 
         return [update_flags_command, remove_flags_command]
 
-    def _update_flags(self, item):
+    def _update_flags(self, item, write=False, move=False):
+        # Reload the item as it could have changed due to us making changes to the parent album
+        item.load()
+
         self._log.debug("Updating flags for item: {0.id}: {0.title}", item)
 
         album = self._remove_flag_string(item.album)
@@ -185,15 +188,18 @@ class AlbumFlags(BeetsPlugin):
                 'Changing album from "{0}" to "{1}"', item.album, album_with_flags
             )
             item.album = album_with_flags
-            item.try_sync(ui.should_write(), ui.should_move())
+            item.try_sync(write, move)
 
         # Also write the changes to the parent album
         current_album = item.get_album()
         if current_album and current_album.album != album_with_flags:
             current_album.album = album_with_flags
-            current_album.try_sync(ui.should_write(), ui.should_move())
+            current_album.try_sync(write, move)
 
-    def _remove_flags(self, item):
+    def _remove_flags(self, item, write=False, move=False):
+        # Reload the item as it could have changed due to us making changes to the parent album
+        item.load()
+
         self._log.debug("Removing flags for item: {0.id}: {0.title}", item)
 
         album_without_flags = self._remove_flag_string(item.album)
@@ -203,38 +209,31 @@ class AlbumFlags(BeetsPlugin):
                 'Changing album from "{0}" to "{1}"', item.album, album_without_flags
             )
             item.album = album_without_flags
-            item.try_sync(ui.should_write(), ui.should_move())
+            item.try_sync(write, move)
 
         # Also write the changes to the parent album
         current_album = item.get_album()
         if current_album and current_album.album != album_without_flags:
             current_album.album = album_without_flags
-            current_album.try_sync(ui.should_write(), ui.should_move())
+            current_album.try_sync(write, move)
 
     def _update_flags_command(self, lib, opts, args):
         query = ui.decargs(args)
         items, albums = _do_query(lib, query, opts.album, False)
 
         for item in items:
-            # Reload the item as it could have changed due to us making changes to the parent album
-            item.load()
-
-            self._update_flags(item)
+            self._update_flags(item, ui.should_write(), ui.should_move())
 
     def _remove_flags_command(self, lib, opts, args):
         query = ui.decargs(args)
         items, albums = _do_query(lib, query, opts.album, False)
 
         for item in items:
-            # Reload the item as it could have changed due to us making changes to the parent album
-            item.load()
+            self._remove_flags(item, ui.should_write(), ui.should_move())
 
-            self._remove_flags(item)
-
-    def _import_album(self, lib, album):
-        # Use the first item to determine a albums flags
-        item, *tail = album.items()
-        self._update_flags(item)
-
-    def _import_item(self, lib, item):
-        self._update_flags(item)
+    def _import_stage(self, session, task):
+        self._log.debug(
+            "Running albumflags import task for {0}", displayable_path(task.paths)
+        )
+        for item in task.imported_items():
+            self._update_flags(item)
