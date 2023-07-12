@@ -59,7 +59,10 @@ class FieldMappingFlag(Flag):
 
     def generate(self, item):
         if self._field in item:
-            values = item[self._field].split("; ")
+            field_value = item[self._field]
+            values = (
+                field_value.split("; ") if isinstance(field_value, str) else field_value
+            )
             flags = map(
                 self._format_flag,
                 values,
