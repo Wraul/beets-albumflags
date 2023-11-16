@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="beets-albumflags",
-    version="0.7",
+    version="0.8",
     description="beets plugin to add flags to album names",
     long_description="",
     author="Mathias Andersson",
