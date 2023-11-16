@@ -89,7 +89,7 @@ class BitdepthFlag(Flag):
 
 class SamplerateFlag(Flag):
     _patterns = [
-        r" \(\d+\(\.\d+\)?kHz\)",
+        r" \(\d+(\.\d+)?kHz\)",
     ]
 
     def __init__(self, min_samplerate):
