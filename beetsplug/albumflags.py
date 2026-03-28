@@ -1,6 +1,6 @@
 from beets.plugins import BeetsPlugin
 from beets import ui
-from beets.ui.commands import _do_query
+from beets.ui.commands.utils import do_query
 from beets.util import displayable_path
 
 from functools import reduce
@@ -222,14 +222,14 @@ class AlbumFlags(BeetsPlugin):
 
     def _update_flags_command(self, lib, opts, args):
         query = ui.decargs(args)
-        items, albums = _do_query(lib, query, opts.album, False)
+        items, albums = do_query(lib, query, opts.album, False)
 
         for item in items:
             self._update_flags(item, ui.should_write(), ui.should_move())
 
     def _remove_flags_command(self, lib, opts, args):
         query = ui.decargs(args)
-        items, albums = _do_query(lib, query, opts.album, False)
+        items, albums = do_query(lib, query, opts.album, False)
 
         for item in items:
             self._remove_flags(item, ui.should_write(), ui.should_move())
